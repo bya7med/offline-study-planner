@@ -4,7 +4,45 @@ I revise on my phone on the bus and on my laptop at home. Both ends go offline. 
 
 This is a Cloudflare Worker that takes those offline edits and merges them.
 
-`GET /health` is up. `POST /sync` checks the JSON and returns 501 until the merge lands. The rules below are what that route has to do. Nothing is stored on this branch.
+## Run it
+
+```bash
+npm install
+npm run dev
+```
+
+`wrangler dev` runs the worker on your machine. One Durable Object holds the merged log for that process.
+
+- `GET /health` returns `{ "ok": true }`
+- `GET /sessions` returns the stored sittings and `totalMinutes`
+- `POST /sync` merges one device's offline batch
+
+A sync body looks like this:
+
+```json
+{
+  "deviceId": "phone",
+  "ops": [
+    {
+      "opId": "phone-1",
+      "deviceId": "phone",
+      "session": {
+        "id": "maths-sat",
+        "subject": "Maths",
+        "startedAt": "2026-11-22T10:00:00.000Z",
+        "durationMin": 45,
+        "note": "paper 1",
+        "updatedAt": "2026-11-22T10:50:00.000Z",
+        "deviceId": "phone"
+      }
+    }
+  ]
+}
+```
+
+`opId` belongs to the device. Send that same `opId` again and the stored minutes do not move. `wrangler.toml` already declares the Durable Object migration used by `wrangler deploy`.
+
+The rules below are what the merge enforces.
 
 ## What a session is
 
