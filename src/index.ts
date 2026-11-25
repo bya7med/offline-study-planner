@@ -1,6 +1,15 @@
 import { DurableObject } from "cloudflare:workers";
+import {
+  applyBatch,
+  emptyState,
+  totalMinutes,
+  visibleSessions,
+  type ServerState,
+} from "./merge";
 import { parseBatch, type ParseResult } from "./validate";
 import type { SyncBatch } from "./types";
+
+const STATE_KEY = "state";
 
 export interface Env {
   PLANNER: DurableObjectNamespace<Planner>;
@@ -13,7 +22,11 @@ export class Planner extends DurableObject<Env> {
     const url = new URL(request.url);
 
     if (request.method === "GET" && url.pathname === "/sessions") {
-      return Response.json({ sessions: [], totalMinutes: 0 });
+      const state = await this.load();
+      return Response.json({
+        sessions: visibleSessions(state),
+        totalMinutes: totalMinutes(state),
+      });
     }
 
     if (request.method === "POST" && url.pathname === "/sync") {
@@ -21,17 +34,38 @@ export class Planner extends DurableObject<Env> {
       if (!parsed.ok) {
         return Response.json({ error: parsed.error }, { status: parsed.status });
       }
-      return Response.json(
-        {
-          error: "merge is not wired up yet",
-          ops: parsed.batch.ops.length,
-        },
-        { status: 501 },
-      );
+
+      // One object, so phone and laptop syncs run one after another.
+      // A repeated op id is ignored. Two durations for one sitting are not summed.
+      const applied = await this.ctx.storage.transaction(async (txn) => {
+        const current = normalise(await txn.get<ServerState>(STATE_KEY));
+        const next = applyBatch(current, parsed.batch);
+        await txn.put(STATE_KEY, next.state);
+        return next;
+      });
+
+      return Response.json({
+        results: applied.results,
+        sessions: visibleSessions(applied.state),
+        totalMinutes: totalMinutes(applied.state),
+      });
     }
 
     return Response.json({ error: "not found" }, { status: 404 });
   }
+
+  private async load(): Promise<ServerState> {
+    return normalise(await this.ctx.storage.get<ServerState>(STATE_KEY));
+  }
+}
+
+function normalise(stored: ServerState | undefined): ServerState {
+  if (!stored) return emptyState();
+  return {
+    sessions: stored.sessions ?? [],
+    appliedOpIds: stored.appliedOpIds ?? [],
+    aliases: stored.aliases ?? {},
+  };
 }
 
 type ReadBatch =
