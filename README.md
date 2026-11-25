@@ -4,7 +4,7 @@ I revise on my phone on the bus and on my laptop at home. Both ends go offline. 
 
 This is a Cloudflare Worker that takes those offline edits and merges them.
 
-The worker code is not in the repo yet. This readme is the behaviour I am building towards.
+`GET /health` is up. `POST /sync` checks the JSON and returns 501 until the merge lands. The rules below are what that route has to do. Nothing is stored on this branch.
 
 ## What a session is
 
