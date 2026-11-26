@@ -1,0 +1,12 @@
+name = "offline-study-planner"
+main = "src/index.ts"
+compatibility_date = "2026-11-22"
+
+# One Durable Object holds the merged log. `wrangler dev` runs it locally.
+[[durable_objects.bindings]]
+name = "PLANNER"
+class_name = "Planner"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Planner"]
