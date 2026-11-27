@@ -44,6 +44,14 @@ A sync body looks like this:
 
 The rules below are what the merge enforces.
 
+## Tests
+
+```bash
+npm test
+```
+
+The tests cover a phone and a laptop editing one session, a retried sync, two ids for the same sitting, and two sittings that should both count.
+
 ## What a session is
 
 A session is one sitting: the subject, when it started, and how many minutes it lasted. The phone and the laptop each mint an id for a new session. Once that session has synced, both devices keep the same id, so a later edit updates the row instead of inserting a second copy.
